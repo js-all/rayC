@@ -118,9 +118,10 @@ var Camera = /** @class */ (function () {
     }
     Camera.prototype.render = function (objects) {
         var res = [];
-        for (var i in new Array(this.height)) {
+        for (var i = 0; i < this.height; i++) {
             res.push([]);
-            for (var j in new Array(this.width)) {
+            for (var _i = 0, _a = new Array(this.width); _i < _a.length; _i++) {
+                var j = _a[_i];
                 res[i].push(rgb.black);
             }
         }
@@ -128,8 +129,8 @@ var Camera = /** @class */ (function () {
             return res;
         }
         var faces = [];
-        for (var _i = 0, objects_1 = objects; _i < objects_1.length; _i++) {
-            var i = objects_1[_i];
+        for (var _b = 0, objects_1 = objects; _b < objects_1.length; _b++) {
+            var i = objects_1[_b];
             if (i instanceof Primitive) {
                 faces.push.apply(faces, i.tris);
             }
@@ -150,14 +151,14 @@ var Camera = /** @class */ (function () {
             }
         }
         var n = 0;
-        for (var _a = 0, dirs_1 = dirs; _a < dirs_1.length; _a++) {
-            var i = dirs_1[_a];
+        for (var _c = 0, dirs_1 = dirs; _c < dirs_1.length; _c++) {
+            var i = dirs_1[_c];
             var m = 0;
-            for (var _b = 0, i_1 = i; _b < i_1.length; _b++) {
-                var j = i_1[_b];
+            for (var _d = 0, i_1 = i; _d < i_1.length; _d++) {
+                var j = i_1[_d];
                 var touchedFaces = [];
-                for (var _c = 0, faces_1 = faces; _c < faces_1.length; _c++) {
-                    var k = faces_1[_c];
+                for (var _e = 0, faces_1 = faces; _e < faces_1.length; _e++) {
+                    var k = faces_1[_e];
                     var ray = k.ray(this.position, j);
                     if (ray.colliding) {
                         touchedFaces.push([ray.distance, k]);
@@ -167,8 +168,8 @@ var Camera = /** @class */ (function () {
                     break;
                 var nearestFace = void 0;
                 var smallestDistance = Infinity;
-                for (var _d = 0, touchedFaces_1 = touchedFaces; _d < touchedFaces_1.length; _d++) {
-                    var i_2 = touchedFaces_1[_d];
+                for (var _f = 0, touchedFaces_1 = touchedFaces; _f < touchedFaces_1.length; _f++) {
+                    var i_2 = touchedFaces_1[_f];
                     if (i_2[0] < smallestDistance) {
                         smallestDistance = i_2[0];
                         nearestFace = i_2[1];

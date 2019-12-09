@@ -108,9 +108,9 @@ class Camera {
     }
     render(objects: Primitive[] | Tris[]) {
         const res: rgb[][] = [];
-        for (let i in new Array(this.height)) {
+        for (let i = 0; i < this.height; i++) {
             res.push([])
-            for (let j in new Array(this.width)) {
+            for (let j of new Array(this.width)) {
                 res[i].push(rgb.black);
             }
         }
