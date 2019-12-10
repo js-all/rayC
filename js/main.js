@@ -14,12 +14,12 @@ canvas.height = ch;
 canvas.width = cw;
 document.body.appendChild(canvas);
 var rgbArr = [];
-for (var i = 0; i < 12; i++) {
-    rgbArr.push(new (rgb.bind.apply(rgb, __spreadArrays([void 0], rgb._$$hsvToRgb(360 / 12 * i, 100, 50))))());
+for (var i = 0; i < 12; i += 2) {
+    rgbArr.push(new (rgb.bind.apply(rgb, __spreadArrays([void 0], rgb._$$hsvToRgb(360 / 12 * i, 100, 100))))());
+    rgbArr.push(new (rgb.bind.apply(rgb, __spreadArrays([void 0], rgb._$$hsvToRgb(360 / 12 * i, 100, 100))))());
 }
-var cube = new Cube(new Vector(-10, -30, 10), 20, 20, 20, new Vector(0, 0, 0), rgbArr);
-var camera = new Camera(new Vector(0, 0, 0), 0, 1920, 1080, new Vector(0, 0, Math.PI));
-cube.colors[4] = rgb.red;
+var cube = new Cube(new Vector(-10, 30, -10), 20, 20, 20, new Vector(0, 0, 0), rgbArr);
+var camera = new Camera(new Vector(60, 100, 60), 0, 1920, 1080, new Vector(-36 / 180 * Math.PI, 0, 3 * (Math.PI / 4)));
 function draw() {
     ctx.clearRect(0, 0, cw, ch);
     camera.drawRender(camera.render([cube]), ctx);

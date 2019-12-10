@@ -77,7 +77,7 @@ class Primitive {
     get rotatedPoints() {
         const res: Vector[] = [];
         for (let i of this.points) {
-            res.push(Rotate3d(i.subtract(this.origin), this.rotation.x, this.rotation.y, this.rotation.z).add(this.origin));
+            res.push(Rotate3dArroundPoint(i, this.origin, this.rotation.x, this.rotation.y, this.rotation.z));
         }
         return res;
     }
@@ -145,14 +145,34 @@ class Camera {
                 faces.push(i);
             }
         }
-        const d1 = 100;
-        const corner = this.position.add(new Vector(this.width / 2, 10, this.height / 2));
+        const d1 = 0.01;
+        const corner = this.position.add(new Vector(this.width / 2, d1, this.height / 2));
         const dirs: Vector[][] = [];
         for (let i = 0; i < this.width; i++) {
             const line = corner.add(new Vector(-1 * i, 0, 0));
             dirs.push([]);
             for (let j = 0; j < this.height; j++) {
-                dirs[i].push(Rotate3d(line.add(new Vector(0, 0, -1 * j)), this.rotation.x, this.rotation.y, this.rotation.z).clamp())
+                const axisZ = new Vector(0, 0, 1);
+                const axisY = Rotate3dArroundSpecAxis(new Vector(0, d1, 0), axisZ, this.rotation.z);
+                const axisX = Rotate3dArroundSpecAxis(Rotate3dArroundSpecAxis(new Vector(1, 0, 0), axisZ, this.rotation.z), axisY, this.rotation.y);
+                dirs[i].push(
+                    Rotate3dArroundSpecAxisAndPoint(
+                        Rotate3dArroundSpecAxisAndPoint(
+                            Rotate3dArroundSpecAxisAndPoint(
+                                line.add(new Vector(0, 0, -j)),
+                                axisZ,
+                                this.position,
+                                this.rotation.z
+                            ),
+                            axisY,
+                            this.position,
+                            this.rotation.y
+                        ),
+                        axisX,
+                        this.position,
+                        this.rotation.x
+                    ).clamp()
+                )
             }
         }
         let n = 0;

@@ -88,7 +88,7 @@ var Primitive = /** @class */ (function () {
             var res = [];
             for (var _i = 0, _a = this.points; _i < _a.length; _i++) {
                 var i = _a[_i];
-                res.push(Rotate3d(i.subtract(this.origin), this.rotation.x, this.rotation.y, this.rotation.z).add(this.origin));
+                res.push(Rotate3dArroundPoint(i, this.origin, this.rotation.x, this.rotation.y, this.rotation.z));
             }
             return res;
         },
@@ -163,14 +163,17 @@ var Camera = /** @class */ (function () {
                 faces.push(i);
             }
         }
-        var d1 = 100;
-        var corner = this.position.add(new Vector(this.width / 2, 10, this.height / 2));
+        var d1 = 0.01;
+        var corner = this.position.add(new Vector(this.width / 2, d1, this.height / 2));
         var dirs = [];
         for (var i = 0; i < this.width; i++) {
             var line = corner.add(new Vector(-1 * i, 0, 0));
             dirs.push([]);
             for (var j = 0; j < this.height; j++) {
-                dirs[i].push(Rotate3d(line.add(new Vector(0, 0, -1 * j)), this.rotation.x, this.rotation.y, this.rotation.z).clamp());
+                var axisZ = new Vector(0, 0, 1);
+                var axisY = Rotate3dArroundSpecAxis(new Vector(0, d1, 0), axisZ, this.rotation.z);
+                var axisX = Rotate3dArroundSpecAxis(Rotate3dArroundSpecAxis(new Vector(1, 0, 0), axisZ, this.rotation.z), axisY, this.rotation.y);
+                dirs[i].push(Rotate3dArroundSpecAxisAndPoint(Rotate3dArroundSpecAxisAndPoint(Rotate3dArroundSpecAxisAndPoint(line.add(new Vector(0, 0, -j)), axisZ, this.position, this.rotation.z), axisY, this.position, this.rotation.y), axisX, this.position, this.rotation.x).clamp());
             }
         }
         var n = 0;
