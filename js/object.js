@@ -35,7 +35,7 @@ var Tris = /** @class */ (function () {
         var t = ((p.z1.cross(p.z2)).dot(l.a.subtract(p[0]))) / (l.mab.dot(p.z1.cross(p.z2)));
         var u = ((p.z2.cross(l.mab)).dot(l.a.subtract(p[0]))) / (l.mab.dot(p.z1.cross(p.z2)));
         var v = ((l.mab.cross(p.z1)).dot(l.a.subtract(p[0]))) / (l.mab.dot(p.z1.cross(p.z2)));
-        var bool = t >= 0;
+        var bool = t >= 0 && u <= 1 && u >= 0 && v <= 1 && v >= 0 && u + v <= 1;
         var res = {
             colliding: bool,
             distance: bool ? Math.sqrt(Math.pow(origin.x - dirrection.x, 2) + Math.pow(origin.y - dirrection.y, 2) + Math.pow(origin.z - dirrection.z, 2)) * t : null,
@@ -43,13 +43,23 @@ var Tris = /** @class */ (function () {
         };
         return res;
     };
+    Tris.prototype.equal = function (t, color) {
+        if (color === void 0) { color = true; }
+        var p = this.points[0].equals(t.points[0]) &&
+            this.points[1].equals(t.points[1]) &&
+            this.points[2].equals(t.points[2]);
+        return color ? this.color.equal(t.color) && p : p;
+    };
     return Tris;
 }());
 var Primitive = /** @class */ (function () {
-    function Primitive(points, faces, color) {
+    function Primitive(points, faces, origin, rotation, color) {
+        if (rotation === void 0) { rotation = new Vector(0, 0, 0); }
         this.points = points;
         this.faces = faces;
         this.colors = [];
+        this.origin = origin;
+        this.rotation = rotation;
         var n = 0;
         for (var _i = 0, _a = this.faces; _i < _a.length; _i++) {
             var i = _a[_i];
@@ -61,11 +71,24 @@ var Primitive = /** @class */ (function () {
     Object.defineProperty(Primitive.prototype, "tris", {
         get: function () {
             var res = [];
+            var p = this.rotatedPoints;
             var n = 0;
             for (var _i = 0, _a = this.faces; _i < _a.length; _i++) {
                 var i = _a[_i];
-                res.push(new Tris(this.points[i[0]], this.points[i[1]], this.points[i[2]], this.colors[n]));
+                res.push(new Tris(p[i[0]], p[i[1]], p[i[2]], this.colors[n]));
                 n++;
+            }
+            return res;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Primitive.prototype, "rotatedPoints", {
+        get: function () {
+            var res = [];
+            for (var _i = 0, _a = this.points; _i < _a.length; _i++) {
+                var i = _a[_i];
+                res.push(Rotate3d(i.subtract(this.origin), this.rotation.x, this.rotation.y, this.rotation.z).add(this.origin));
             }
             return res;
         },
@@ -76,7 +99,8 @@ var Primitive = /** @class */ (function () {
 }());
 var Cube = /** @class */ (function (_super) {
     __extends(Cube, _super);
-    function Cube(corner, width, length, height, color) {
+    function Cube(corner, width, length, height, rotation, color) {
+        if (rotation === void 0) { rotation = new Vector(0, 0, 0); }
         if (color === void 0) { color = rgb.blue; }
         var _this = this;
         var colorArray = color instanceof rgb ? [color, color, color, color, color, color, color, color, color, color, color, color] : color;
@@ -85,10 +109,10 @@ var Cube = /** @class */ (function (_super) {
             corner.add(new Vector(width, 0, 0)),
             corner.add(new Vector(width, length, 0)),
             corner.add(new Vector(0, length, 0)),
-            corner.add(new Vector(0, 0, height)),
-            corner.add(new Vector(width, 0, height)),
-            corner.add(new Vector(width, length, height)),
-            corner.add(new Vector(0, length, height)),
+            corner.add(new Vector(0, 0, -height)),
+            corner.add(new Vector(0, length, -height)),
+            corner.add(new Vector(width, 0, -height)),
+            corner.add(new Vector(width, length, -height)),
         ], [
             [0, 1, 2],
             [0, 3, 2],
@@ -101,8 +125,8 @@ var Cube = /** @class */ (function (_super) {
             [0, 3, 5],
             [0, 4, 5],
             [4, 6, 7],
-            [4, 5, 7]
-        ], colorArray) || this;
+            [4, 5, 7] // 11       ^
+        ], corner.add(new Vector(width / 2, length / 2, height / 2)), rotation, colorArray) || this;
         return _this;
     }
     return Cube;
@@ -117,6 +141,7 @@ var Camera = /** @class */ (function () {
         this.rotation = rotation;
     }
     Camera.prototype.render = function (objects) {
+        console.time('render');
         var res = [];
         for (var i = 0; i < this.height; i++) {
             res.push([]);
@@ -125,7 +150,7 @@ var Camera = /** @class */ (function () {
                 res[i].push(rgb.black);
             }
         }
-        if (objects.length = 0) {
+        if (objects.length === 0) {
             return res;
         }
         var faces = [];
@@ -138,16 +163,14 @@ var Camera = /** @class */ (function () {
                 faces.push(i);
             }
         }
-        var d1 = 10;
+        var d1 = 100;
         var corner = this.position.add(new Vector(this.width / 2, 10, this.height / 2));
         var dirs = [];
-        for (var e in new Array(this.width)) {
-            var i = parseInt(e);
+        for (var i = 0; i < this.width; i++) {
             var line = corner.add(new Vector(-1 * i, 0, 0));
             dirs.push([]);
-            for (var f in new Array(this.height)) {
-                var j = parseInt(f);
-                dirs[i].push(line.add(new Vector(0, 0, -1 * j)));
+            for (var j = 0; j < this.height; j++) {
+                dirs[i].push(Rotate3d(line.add(new Vector(0, 0, -1 * j)), this.rotation.x, this.rotation.y, this.rotation.z).clamp());
             }
         }
         var n = 0;
@@ -165,7 +188,7 @@ var Camera = /** @class */ (function () {
                     }
                 }
                 if (touchedFaces.length < 1)
-                    break;
+                    continue;
                 var nearestFace = void 0;
                 var smallestDistance = Infinity;
                 for (var _f = 0, touchedFaces_1 = touchedFaces; _f < touchedFaces_1.length; _f++) {
@@ -181,6 +204,7 @@ var Camera = /** @class */ (function () {
             }
             n++;
         }
+        console.timeEnd('render');
         return res;
     };
     Camera.prototype.drawRender = function (render, ctx, x, y, dx, dy) {
@@ -197,7 +221,7 @@ var Camera = /** @class */ (function () {
             for (var j = 0; j < e.length; j++) {
                 var f = e[j];
                 ctx.fillStyle = f.value;
-                ctx.fillRect(i * pxsx, j * pxsy, pxsx, pxsy);
+                ctx.fillRect(j * pxsx, i * pxsy, pxsx, pxsy);
             }
         }
     };

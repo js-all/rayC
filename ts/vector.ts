@@ -39,6 +39,15 @@ class Vector {
             this.x * v.y - this.y * v.x
         );
     }
+    clamp(n: number = 4) {
+        const fac = Math.pow(10, n);
+        const f = (nu: number) => parseFloat(nu.toFixed(n))
+        return new Vector(
+            f(this.x),
+            f(this.y),
+            f(this.z)
+        )
+    }
     length(): number {
         return Math.sqrt(this.dot(this));
     }

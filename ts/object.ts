@@ -28,7 +28,8 @@ class Tris {
         const t = ((p.z1.cross(p.z2)).dot(l.a.subtract(p[0]))) / (l.mab.dot(p.z1.cross(p.z2)));
         const u = ((p.z2.cross(l.mab)).dot(l.a.subtract(p[0]))) / (l.mab.dot(p.z1.cross(p.z2)));
         const v = ((l.mab.cross(p.z1)).dot(l.a.subtract(p[0]))) / (l.mab.dot(p.z1.cross(p.z2)));
-        const bool = t >= 0;
+
+        const bool = t >= 0 && u <= 1 && u >= 0 && v <= 1 && v >= 0 && u + v <= 1;
         const res: RayData<typeof bool> = {
             colliding: bool,
             distance: bool ? Math.sqrt(Math.pow(origin.x - dirrection.x, 2) + Math.pow(origin.y - dirrection.y, 2) + Math.pow(origin.z - dirrection.z, 2)) * t : null,
@@ -36,16 +37,26 @@ class Tris {
         }
         return res;
     }
+    equal(t: Tris, color = true) {
+        const p = this.points[0].equals(t.points[0]) &&
+            this.points[1].equals(t.points[1]) &&
+            this.points[2].equals(t.points[2]);
+        return color ? this.color.equal(t.color) && p : p;
+    }
 }
 
 class Primitive {
     points: Vector[];
     faces: [number, number, number][];
     colors: rgb[];
-    constructor(points: Vector[], faces: [number, number, number][], color?: rgb[]) {
+    rotation: Vector;
+    origin: Vector;
+    constructor(points: Vector[], faces: [number, number, number][], origin: Vector, rotation: Vector = new Vector(0, 0, 0), color?: rgb[]) {
         this.points = points;
         this.faces = faces;
         this.colors = [];
+        this.origin = origin;
+        this.rotation = rotation;
         let n = 0;
         for (let i of this.faces) {
             const col = color !== undefined && color[n] !== undefined ? color[n] : rgb.blue;
@@ -55,41 +66,49 @@ class Primitive {
     }
     get tris() {
         const res: Tris[] = [];
+        const p = this.rotatedPoints;
         let n = 0;
         for (let i of this.faces) {
-            res.push(new Tris(this.points[i[0]], this.points[i[1]], this.points[i[2]], this.colors[n]))
+            res.push(new Tris(p[i[0]], p[i[1]], p[i[2]], this.colors[n]))
             n++;
+        }
+        return res;
+    }
+    get rotatedPoints() {
+        const res: Vector[] = [];
+        for (let i of this.points) {
+            res.push(Rotate3d(i.subtract(this.origin), this.rotation.x, this.rotation.y, this.rotation.z).add(this.origin));
         }
         return res;
     }
 }
 
 class Cube extends Primitive {
-    constructor(corner: Vector, width: number, length: number, height: number, color: rgb | rgb[] = rgb.blue) {
+    constructor(corner: Vector, width: number, length: number, height: number, rotation: Vector = new Vector(0, 0, 0), color: rgb | rgb[] = rgb.blue) {
         const colorArray = color instanceof rgb ? [color, color, color, color, color, color, color, color, color, color, color, color] : color;
         super([
-            corner.add(new Vector(0, 0, 0)),
-            corner.add(new Vector(width, 0, 0)),
-            corner.add(new Vector(width, length, 0)),
-            corner.add(new Vector(0, length, 0)),
-            corner.add(new Vector(0, 0, height)),
-            corner.add(new Vector(width, 0, height)),
-            corner.add(new Vector(width, length, height)),
-            corner.add(new Vector(0, length, height)),
+            corner.add(new Vector(0, 0, 0)),                // p0 : 0 0 0
+            corner.add(new Vector(width, 0, 0)),            // p1 : w 0 0
+            corner.add(new Vector(width, length, 0)),       // p2 : w l 0
+            corner.add(new Vector(0, length, 0)),           // p3 : 0 l 0
+            corner.add(new Vector(0, 0, -height)),          // p4 : 0 0 h
+            corner.add(new Vector(0, length, -height)),     // p5 : 0 l h
+            corner.add(new Vector(width, 0, -height)),      // p6 : w 0 h
+            corner.add(new Vector(width, length, -height)), // p7 : w l h
         ], [
-            [0, 1, 2],
-            [0, 3, 2],
-            [1, 6, 7],
-            [1, 2, 7],
-            [3, 2, 7],
-            [3, 5, 7],
-            [1, 0, 4],
-            [1, 6, 4],
-            [0, 3, 5],
-            [0, 4, 5],
-            [4, 6, 7],
-            [4, 5, 7]
-        ], colorArray);
+            [0, 1, 2],  // 00  top face
+            [0, 3, 2],  // 01     ^
+            [1, 6, 7],  // 02  left face
+            [1, 2, 7],  // 03      ^
+            [3, 2, 7],  // 04  front face
+            [3, 5, 7],  // 05      ^
+            [1, 0, 4],  // 06  back face
+            [1, 6, 4],  // 07      ^
+            [0, 3, 5],  // 08  left face
+            [0, 4, 5],  // 09      ^
+            [4, 6, 7],  // 10  bottom face
+            [4, 5, 7]   // 11       ^
+        ], corner.add(new Vector(width / 2, length / 2, height / 2)), rotation, colorArray);
     }
 }
 
@@ -107,6 +126,7 @@ class Camera {
         this.rotation = rotation;
     }
     render(objects: Primitive[] | Tris[]) {
+        console.time('render');
         const res: rgb[][] = [];
         for (let i = 0; i < this.height; i++) {
             res.push([])
@@ -114,7 +134,7 @@ class Camera {
                 res[i].push(rgb.black);
             }
         }
-        if (objects.length = 0) {
+        if (objects.length === 0) {
             return res;
         }
         const faces: Tris[] = [];
@@ -125,16 +145,14 @@ class Camera {
                 faces.push(i);
             }
         }
-        const d1 = 10;
+        const d1 = 100;
         const corner = this.position.add(new Vector(this.width / 2, 10, this.height / 2));
         const dirs: Vector[][] = [];
-        for (let e in new Array(this.width)) {
-            const i = parseInt(e);
+        for (let i = 0; i < this.width; i++) {
             const line = corner.add(new Vector(-1 * i, 0, 0));
             dirs.push([]);
-            for (let f in new Array(this.height)) {
-                const j = parseInt(f);
-                dirs[i].push(line.add(new Vector(0, 0, -1 * j)))
+            for (let j = 0; j < this.height; j++) {
+                dirs[i].push(Rotate3d(line.add(new Vector(0, 0, -1 * j)), this.rotation.x, this.rotation.y, this.rotation.z).clamp())
             }
         }
         let n = 0;
@@ -148,7 +166,7 @@ class Camera {
                         touchedFaces.push([<number>ray.distance, k]);
                     }
                 }
-                if (touchedFaces.length < 1) break;
+                if (touchedFaces.length < 1) continue;
                 let nearestFace: Tris;
                 let smallestDistance = Infinity;
                 for (let i of touchedFaces) {
@@ -163,6 +181,7 @@ class Camera {
             }
             n++;
         }
+        console.timeEnd('render');
         return res;
     }
     drawRender(render: rgb[][], ctx: CanvasRenderingContext2D, x: number = 0, y: number = 0, dx?: number, dy?: number) {
@@ -175,7 +194,7 @@ class Camera {
             for (let j = 0; j < e.length; j++) {
                 const f = e[j];
                 ctx.fillStyle = f.value;
-                ctx.fillRect(i * pxsx, j * pxsy, pxsx, pxsy);
+                ctx.fillRect(j * pxsx, i * pxsy, pxsx, pxsy);
             }
         }
     }

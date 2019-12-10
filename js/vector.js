@@ -41,6 +41,12 @@ var Vector = /** @class */ (function () {
     Vector.prototype.cross = function (v) {
         return new Vector(this.y * v.z - this.z * v.y, this.z * v.x - this.x * v.z, this.x * v.y - this.y * v.x);
     };
+    Vector.prototype.clamp = function (n) {
+        if (n === void 0) { n = 4; }
+        var fac = Math.pow(10, n);
+        var f = function (nu) { return parseFloat(nu.toFixed(n)); };
+        return new Vector(f(this.x), f(this.y), f(this.z));
+    };
     Vector.prototype.length = function () {
         return Math.sqrt(this.dot(this));
     };
