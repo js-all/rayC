@@ -163,7 +163,7 @@ var Camera = /** @class */ (function () {
                 faces.push(i);
             }
         }
-        var d1 = 0.01;
+        var d1 = 10;
         var corner = this.position.add(new Vector(this.width / 2, d1, this.height / 2));
         var dirs = [];
         for (var i = 0; i < this.width; i++) {

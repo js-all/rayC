@@ -145,7 +145,7 @@ class Camera {
                 faces.push(i);
             }
         }
-        const d1 = 0.01;
+        const d1 = 10;
         const corner = this.position.add(new Vector(this.width / 2, d1, this.height / 2));
         const dirs: Vector[][] = [];
         for (let i = 0; i < this.width; i++) {
