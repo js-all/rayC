@@ -24,11 +24,15 @@ function Rotate3dArroundPoint(point, origin, x, y, z) {
 }
 function Rotate3dArroundSpecAxis(point, axis, angle) {
     axis = axis.unit();
-    var cos = Math.cos, sin = Math.sin, pow = Math.pow;
+    var x = axis.x, y = axis.y, z = axis.z;
+    var a = angle;
+    var sq = function (n) { return Math.pow(n, 2); };
+    var c = Math.cos(angle);
+    var s = Math.sin(angle);
     var mat = [
-        [cos(angle) + pow(axis.x, 2) * (1 - cos(angle)), axis.x * axis.y * (1 - cos(angle)) - axis.z * sin(angle), axis.x * axis.z * (1 - cos(angle)) + axis.y * sin(angle)],
-        [axis.y * axis.x * (1 - cos(angle)) + axis.z * sin(angle), cos(angle) + pow(axis.y, 2) * (1 - cos(angle)), axis.y * axis.z * (1 - cos(angle)) - axis.x * sin(angle)],
-        [axis.z * axis.x * (1 - cos(angle)) - axis.y * sin(angle), axis.z * axis.y * (1 - cos(angle)) + axis.x * sin(angle), cos(angle) * pow(axis.z, 2) * (1 - cos(angle))]
+        [c + sq(x) * (1 - c), x * y * (1 - c) - z * s, x * z * (1 - c) + y * s],
+        [y * x * (1 - c) + z * s, c + sq(y) * (1 - c), y * z * (1 - c) - x * s],
+        [z * x * (1 - c) - y * s, z * y * (1 - c) + x * s, c + sq(z) * (1 - c)]
     ];
     var res = multiplyMatrices(mat, [[point.x], [point.y], [point.z]]);
     return new Vector(res[0][0], res[1][0], res[2][0]);

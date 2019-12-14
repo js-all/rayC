@@ -126,7 +126,9 @@ class Camera {
         this.rotation = rotation;
     }
     render(objects: Primitive[] | Tris[]) {
-        console.time('render');
+        console.log('--------------- RENDER ---------------') // START ------------------------------------------------------------------------------
+        console.time('render: total');
+        console.time('render: prep');
         const res: rgb[][] = [];
         for (let i = 0; i < this.height; i++) {
             res.push([])
@@ -145,16 +147,18 @@ class Camera {
                 faces.push(i);
             }
         }
-        const d1 = 10;
+        console.timeEnd('render: prep')
+        console.time('render: generating rays'); // RAYS SETUP --------------------------------------------------------------------------------------
+        const d1 = 300;
         const corner = this.position.add(new Vector(this.width / 2, d1, this.height / 2));
         const dirs: Vector[][] = [];
+        const axisZ = new Vector(0, 0, 1);
+        const axisY = Rotate3dArroundSpecAxis(new Vector(0, d1, 0), axisZ, this.rotation.z);
+        const axisX = Rotate3dArroundSpecAxis(Rotate3dArroundSpecAxis(new Vector(1, 0, 0), axisZ, this.rotation.z), axisY, this.rotation.y);
         for (let i = 0; i < this.width; i++) {
             const line = corner.add(new Vector(-1 * i, 0, 0));
             dirs.push([]);
             for (let j = 0; j < this.height; j++) {
-                const axisZ = new Vector(0, 0, 1);
-                const axisY = Rotate3dArroundSpecAxis(new Vector(0, d1, 0), axisZ, this.rotation.z);
-                const axisX = Rotate3dArroundSpecAxis(Rotate3dArroundSpecAxis(new Vector(1, 0, 0), axisZ, this.rotation.z), axisY, this.rotation.y);
                 dirs[i].push(
                     Rotate3dArroundSpecAxisAndPoint(
                         Rotate3dArroundSpecAxisAndPoint(
@@ -175,6 +179,8 @@ class Camera {
                 )
             }
         }
+        console.timeEnd('render: generating rays');
+        console.time('render: casting rays'); // RAY CASt -------------------------------------------------------------------------------------------
         let n = 0;
         for (let i of dirs) {
             let m = 0;
@@ -201,10 +207,14 @@ class Camera {
             }
             n++;
         }
-        console.timeEnd('render');
+        console.timeEnd('render: casting rays');
+        console.timeEnd('render: total');
+        console.log('----------- RENDER FINISHED ----------') // END ------------------------------------------------------------
         return res;
     }
     drawRender(render: rgb[][], ctx: CanvasRenderingContext2D, x: number = 0, y: number = 0, dx?: number, dy?: number) {
+        console.log('---------------- DRAW ----------------')
+        console.time('draw')
         if (dx === undefined) dx = this.width;
         if (dy === undefined) dy = this.height;
         const pxsx = Math.abs(dx - x) / this.width;
@@ -217,6 +227,8 @@ class Camera {
                 ctx.fillRect(j * pxsx, i * pxsy, pxsx, pxsy);
             }
         }
+        console.timeEnd('draw');
+        console.log('------------ DRAW FINISHED -----------')
     }
 }
 

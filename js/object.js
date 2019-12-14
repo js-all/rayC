@@ -141,7 +141,9 @@ var Camera = /** @class */ (function () {
         this.rotation = rotation;
     }
     Camera.prototype.render = function (objects) {
-        console.time('render');
+        console.log('--------------- RENDER ---------------'); // START ------------------------------------------------------------------------------
+        console.time('render: total');
+        console.time('render: prep');
         var res = [];
         for (var i = 0; i < this.height; i++) {
             res.push([]);
@@ -163,19 +165,23 @@ var Camera = /** @class */ (function () {
                 faces.push(i);
             }
         }
-        var d1 = 10;
+        console.timeEnd('render: prep');
+        console.time('render: generating rays'); // RAYS SETUP --------------------------------------------------------------------------------------
+        var d1 = 300;
         var corner = this.position.add(new Vector(this.width / 2, d1, this.height / 2));
         var dirs = [];
+        var axisZ = new Vector(0, 0, 1);
+        var axisY = Rotate3dArroundSpecAxis(new Vector(0, d1, 0), axisZ, this.rotation.z);
+        var axisX = Rotate3dArroundSpecAxis(Rotate3dArroundSpecAxis(new Vector(1, 0, 0), axisZ, this.rotation.z), axisY, this.rotation.y);
         for (var i = 0; i < this.width; i++) {
             var line = corner.add(new Vector(-1 * i, 0, 0));
             dirs.push([]);
             for (var j = 0; j < this.height; j++) {
-                var axisZ = new Vector(0, 0, 1);
-                var axisY = Rotate3dArroundSpecAxis(new Vector(0, d1, 0), axisZ, this.rotation.z);
-                var axisX = Rotate3dArroundSpecAxis(Rotate3dArroundSpecAxis(new Vector(1, 0, 0), axisZ, this.rotation.z), axisY, this.rotation.y);
                 dirs[i].push(Rotate3dArroundSpecAxisAndPoint(Rotate3dArroundSpecAxisAndPoint(Rotate3dArroundSpecAxisAndPoint(line.add(new Vector(0, 0, -j)), axisZ, this.position, this.rotation.z), axisY, this.position, this.rotation.y), axisX, this.position, this.rotation.x).clamp());
             }
         }
+        console.timeEnd('render: generating rays');
+        console.time('render: casting rays'); // RAY CASt -------------------------------------------------------------------------------------------
         var n = 0;
         for (var _c = 0, dirs_1 = dirs; _c < dirs_1.length; _c++) {
             var i = dirs_1[_c];
@@ -207,12 +213,16 @@ var Camera = /** @class */ (function () {
             }
             n++;
         }
-        console.timeEnd('render');
+        console.timeEnd('render: casting rays');
+        console.timeEnd('render: total');
+        console.log('----------- RENDER FINISHED ----------'); // END ------------------------------------------------------------
         return res;
     };
     Camera.prototype.drawRender = function (render, ctx, x, y, dx, dy) {
         if (x === void 0) { x = 0; }
         if (y === void 0) { y = 0; }
+        console.log('---------------- DRAW ----------------');
+        console.time('draw');
         if (dx === undefined)
             dx = this.width;
         if (dy === undefined)
@@ -227,6 +237,8 @@ var Camera = /** @class */ (function () {
                 ctx.fillRect(j * pxsx, i * pxsy, pxsx, pxsy);
             }
         }
+        console.timeEnd('draw');
+        console.log('------------ DRAW FINISHED -----------');
     };
     return Camera;
 }());
