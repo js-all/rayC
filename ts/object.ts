@@ -32,7 +32,7 @@ class Tris {
         const bool = t >= 0 && u <= 1 && u >= 0 && v <= 1 && v >= 0 && u + v <= 1;
         const res: RayData<typeof bool> = {
             colliding: bool,
-            distance: bool ? Math.sqrt(Math.pow(origin.x - dirrection.x, 2) + Math.pow(origin.y - dirrection.y, 2) + Math.pow(origin.z - dirrection.z, 2)) * t : null,
+            distance: bool ? t : null,
             location: bool ? l.a.add(l.ab.multiply(t)) : null
         }
         return res;
@@ -112,6 +112,21 @@ class Cube extends Primitive {
     }
 }
 
+class Plane extends Primitive {
+    constructor(corner: Vector, width: number, length: number, rotation: Vector = new Vector(0, 0, 0), color: rgb | rgb[] = rgb.blue) {
+        const colorArray = color instanceof rgb ? [color, color] : color;
+        super([
+            corner.add(new Vector(0, 0, 0)),
+            corner.add(new Vector(width, 0, 0)),
+            corner.add(new Vector(0, length, 0)),
+            corner.add(new Vector(width, length, 0))
+        ], [
+            [0, 1, 2],
+            [1, 2, 3]
+        ], corner.add(new Vector(width / 2, length / 2, 0)), rotation, colorArray);
+    }
+}
+
 class Camera {
     position: Vector;
     fov: number;
@@ -124,6 +139,54 @@ class Camera {
         this.width = width;
         this.height = height;
         this.rotation = rotation;
+    }
+    getAxis(): [Vector, Vector, Vector] {
+        const axisZ = new Vector(0, 0, 1).unit();
+        const axisY = Rotate3dArroundSpecAxis(new Vector(0, 1, 0), axisZ, this.rotation.z).unit();
+        const axisX = Rotate3dArroundSpecAxis(Rotate3dArroundSpecAxis(new Vector(1, 0, 0), axisZ, this.rotation.z), axisY, this.rotation.y).unit();
+        return [axisX, axisY, axisZ];
+    }
+    rotateArroundLocalAxis(point: Vector, rotation = new Vector(this.rotation.x, this.rotation.y, this.rotation.z)) {
+        const [axisX, axisY, axisZ] = this.getAxis();
+        return Rotate3dArroundSpecAxisAndPoint(
+            Rotate3dArroundSpecAxisAndPoint(
+                Rotate3dArroundSpecAxisAndPoint(
+                    point,
+                    axisZ,
+                    this.position,
+                    rotation.z
+                ),
+                axisY,
+                this.position,
+                rotation.y
+            ),
+            axisX,
+            this.position,
+            rotation.x
+        );
+    }
+    translateLocal(ammount: Vector) {
+        const [axisX, axisY, axisZ] = this.getAxis();
+        const res = this.position.clone();
+        res.add(axisX.multiply(ammount.x));
+        res.add(axisY.multiply(ammount.y));
+        res.add(axisZ.multiply(ammount.z));
+        return res;
+
+    }
+    getDirs(distanceY: number) {
+        const d1 = distanceY;
+        const corner = this.position.add(new Vector(this.width / 2, d1, this.height / 2));
+        const dirs: Vector[][] = [];
+        const [axisX, axisY, axisZ] = this.getAxis();
+        for (let i = 0; i < this.width; i++) {
+            const line = corner.add(new Vector(-1 * i, 0, 0));
+            dirs.push([]);
+            for (let j = 0; j < this.height; j++) {
+                dirs[i].push(this.rotateArroundLocalAxis(line.add(new Vector(0, 0, -j))).clamp());
+            }
+        }
+        return dirs;
     }
     render(objects: Primitive[] | Tris[]) {
         console.log('--------------- RENDER ---------------') // START ------------------------------------------------------------------------------
@@ -149,36 +212,8 @@ class Camera {
         }
         console.timeEnd('render: prep')
         console.time('render: generating rays'); // RAYS SETUP --------------------------------------------------------------------------------------
-        const d1 = 300;
-        const corner = this.position.add(new Vector(this.width / 2, d1, this.height / 2));
-        const dirs: Vector[][] = [];
-        const axisZ = new Vector(0, 0, 1);
-        const axisY = Rotate3dArroundSpecAxis(new Vector(0, d1, 0), axisZ, this.rotation.z);
-        const axisX = Rotate3dArroundSpecAxis(Rotate3dArroundSpecAxis(new Vector(1, 0, 0), axisZ, this.rotation.z), axisY, this.rotation.y);
-        for (let i = 0; i < this.width; i++) {
-            const line = corner.add(new Vector(-1 * i, 0, 0));
-            dirs.push([]);
-            for (let j = 0; j < this.height; j++) {
-                dirs[i].push(
-                    Rotate3dArroundSpecAxisAndPoint(
-                        Rotate3dArroundSpecAxisAndPoint(
-                            Rotate3dArroundSpecAxisAndPoint(
-                                line.add(new Vector(0, 0, -j)),
-                                axisZ,
-                                this.position,
-                                this.rotation.z
-                            ),
-                            axisY,
-                            this.position,
-                            this.rotation.y
-                        ),
-                        axisX,
-                        this.position,
-                        this.rotation.x
-                    ).clamp()
-                )
-            }
-        }
+        const d1 = 20;
+        const dirs = this.getDirs(d1);
         console.timeEnd('render: generating rays');
         console.time('render: casting rays'); // RAY CASt -------------------------------------------------------------------------------------------
         let n = 0;
@@ -209,7 +244,7 @@ class Camera {
         }
         console.timeEnd('render: casting rays');
         console.timeEnd('render: total');
-        console.log('----------- RENDER FINISHED ----------') // END ------------------------------------------------------------
+        console.log('----------- RENDER FINISHED ----------') // END --------------------------------------------------------------------------------
         return res;
     }
     drawRender(render: rgb[][], ctx: CanvasRenderingContext2D, x: number = 0, y: number = 0, dx?: number, dy?: number) {

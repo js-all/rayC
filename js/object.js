@@ -38,7 +38,7 @@ var Tris = /** @class */ (function () {
         var bool = t >= 0 && u <= 1 && u >= 0 && v <= 1 && v >= 0 && u + v <= 1;
         var res = {
             colliding: bool,
-            distance: bool ? Math.sqrt(Math.pow(origin.x - dirrection.x, 2) + Math.pow(origin.y - dirrection.y, 2) + Math.pow(origin.z - dirrection.z, 2)) * t : null,
+            distance: bool ? t : null,
             location: bool ? l.a.add(l.ab.multiply(t)) : null
         };
         return res;
@@ -131,6 +131,26 @@ var Cube = /** @class */ (function (_super) {
     }
     return Cube;
 }(Primitive));
+var Plane = /** @class */ (function (_super) {
+    __extends(Plane, _super);
+    function Plane(corner, width, length, rotation, color) {
+        if (rotation === void 0) { rotation = new Vector(0, 0, 0); }
+        if (color === void 0) { color = rgb.blue; }
+        var _this = this;
+        var colorArray = color instanceof rgb ? [color, color] : color;
+        _this = _super.call(this, [
+            corner.add(new Vector(0, 0, 0)),
+            corner.add(new Vector(width, 0, 0)),
+            corner.add(new Vector(0, length, 0)),
+            corner.add(new Vector(width, length, 0))
+        ], [
+            [0, 1, 2],
+            [1, 2, 3]
+        ], corner.add(new Vector(width / 2, length / 2, 0)), rotation, colorArray) || this;
+        return _this;
+    }
+    return Plane;
+}(Primitive));
 var Camera = /** @class */ (function () {
     function Camera(position, fov, width, height, rotation) {
         if (rotation === void 0) { rotation = new Vector(0, 0, 0); }
@@ -140,6 +160,39 @@ var Camera = /** @class */ (function () {
         this.height = height;
         this.rotation = rotation;
     }
+    Camera.prototype.getAxis = function () {
+        var axisZ = new Vector(0, 0, 1).unit();
+        var axisY = Rotate3dArroundSpecAxis(new Vector(0, 1, 0), axisZ, this.rotation.z).unit();
+        var axisX = Rotate3dArroundSpecAxis(Rotate3dArroundSpecAxis(new Vector(1, 0, 0), axisZ, this.rotation.z), axisY, this.rotation.y).unit();
+        return [axisX, axisY, axisZ];
+    };
+    Camera.prototype.rotateArroundLocalAxis = function (point, rotation) {
+        if (rotation === void 0) { rotation = new Vector(this.rotation.x, this.rotation.y, this.rotation.z); }
+        var _a = this.getAxis(), axisX = _a[0], axisY = _a[1], axisZ = _a[2];
+        return Rotate3dArroundSpecAxisAndPoint(Rotate3dArroundSpecAxisAndPoint(Rotate3dArroundSpecAxisAndPoint(point, axisZ, this.position, rotation.z), axisY, this.position, rotation.y), axisX, this.position, rotation.x);
+    };
+    Camera.prototype.translateLocal = function (ammount) {
+        var _a = this.getAxis(), axisX = _a[0], axisY = _a[1], axisZ = _a[2];
+        var res = this.position.clone();
+        res.add(axisX.multiply(ammount.x));
+        res.add(axisY.multiply(ammount.y));
+        res.add(axisZ.multiply(ammount.z));
+        return res;
+    };
+    Camera.prototype.getDirs = function (distanceY) {
+        var d1 = distanceY;
+        var corner = this.position.add(new Vector(this.width / 2, d1, this.height / 2));
+        var dirs = [];
+        var _a = this.getAxis(), axisX = _a[0], axisY = _a[1], axisZ = _a[2];
+        for (var i = 0; i < this.width; i++) {
+            var line = corner.add(new Vector(-1 * i, 0, 0));
+            dirs.push([]);
+            for (var j = 0; j < this.height; j++) {
+                dirs[i].push(this.rotateArroundLocalAxis(line.add(new Vector(0, 0, -j))).clamp());
+            }
+        }
+        return dirs;
+    };
     Camera.prototype.render = function (objects) {
         console.log('--------------- RENDER ---------------'); // START ------------------------------------------------------------------------------
         console.time('render: total');
@@ -167,19 +220,8 @@ var Camera = /** @class */ (function () {
         }
         console.timeEnd('render: prep');
         console.time('render: generating rays'); // RAYS SETUP --------------------------------------------------------------------------------------
-        var d1 = 300;
-        var corner = this.position.add(new Vector(this.width / 2, d1, this.height / 2));
-        var dirs = [];
-        var axisZ = new Vector(0, 0, 1);
-        var axisY = Rotate3dArroundSpecAxis(new Vector(0, d1, 0), axisZ, this.rotation.z);
-        var axisX = Rotate3dArroundSpecAxis(Rotate3dArroundSpecAxis(new Vector(1, 0, 0), axisZ, this.rotation.z), axisY, this.rotation.y);
-        for (var i = 0; i < this.width; i++) {
-            var line = corner.add(new Vector(-1 * i, 0, 0));
-            dirs.push([]);
-            for (var j = 0; j < this.height; j++) {
-                dirs[i].push(Rotate3dArroundSpecAxisAndPoint(Rotate3dArroundSpecAxisAndPoint(Rotate3dArroundSpecAxisAndPoint(line.add(new Vector(0, 0, -j)), axisZ, this.position, this.rotation.z), axisY, this.position, this.rotation.y), axisX, this.position, this.rotation.x).clamp());
-            }
-        }
+        var d1 = 20;
+        var dirs = this.getDirs(d1);
         console.timeEnd('render: generating rays');
         console.time('render: casting rays'); // RAY CASt -------------------------------------------------------------------------------------------
         var n = 0;
@@ -215,7 +257,7 @@ var Camera = /** @class */ (function () {
         }
         console.timeEnd('render: casting rays');
         console.timeEnd('render: total');
-        console.log('----------- RENDER FINISHED ----------'); // END ------------------------------------------------------------
+        console.log('----------- RENDER FINISHED ----------'); // END --------------------------------------------------------------------------------
         return res;
     };
     Camera.prototype.drawRender = function (render, ctx, x, y, dx, dy) {
